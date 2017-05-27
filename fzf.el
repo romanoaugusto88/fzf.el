@@ -71,9 +71,12 @@
      default-directory)))
 
 (defun fzf/cmd (cmd)
-  (format "stdout=$(%s%s %s); echo; echo $stdout"
+  (format "stdout=$(%s%s %s %s); echo; echo $stdout"
           (if cmd (concat cmd " | ") "")
           fzf/executable
+          (format "--bind \"::execute(grep -Hn . {} | cut -f-2 -d: | %s %s)+abort\""
+                   fzf/executable
+                   fzf/args)
           fzf/args))
 
 (defun fzf/after-term-handle-exit (process-name msg)
