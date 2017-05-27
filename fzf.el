@@ -64,18 +64,36 @@
   :type 'bool
   :group 'fzf)
 
+(defun fzf/default-directory()
+  (condition-case err
+      (projectile-project-root)
+    (error
+     default-directory)))
+
+(defun fzf/cmd (cmd)
+  (format "stdout=$(%s%s %s); echo; echo $stdout"
+          (if cmd (concat cmd " | ") "")
+          fzf/executable
+          fzf/args))
+
 (defun fzf/after-term-handle-exit (process-name msg)
   (let* ((text (buffer-substring-no-properties (point-min) (point-max)))
-         (lines (split-string text "\n" t "\s.*\s"))
-         (target (car (last (butlast lines 1))))
-         (file (expand-file-name target)))
+         (lines (split-string text "\n" t nil))
+         (line (car (last (butlast lines 1))))
+         (selected (split-string line ":"))
+         (file (expand-file-name (pop selected)))
+         (linenumber (pop selected)))
     (kill-buffer "*fzf*")
     (jump-to-register :fzf-windows)
     (when (file-exists-p file)
-      (find-file file)))
+      (find-file file)
+      (when linenumber
+        (goto-char (point-min))
+        (forward-line (- (string-to-number linenumber) 1))
+        (back-to-indentation))))
   (advice-remove 'term-handle-exit #'fzf/after-term-handle-exit))
 
-(defun fzf/start (directory)
+(defun fzf/start (directory cmd)
   (require 'term)
   (window-configuration-to-register :fzf-windows)
   (advice-add 'term-handle-exit :after #'fzf/after-term-handle-exit)
@@ -85,9 +103,7 @@
       (setq default-directory directory))
     (split-window-vertically window-height)
     (when fzf/position-bottom (other-window 1))
-    (if fzf/args
-        (apply 'make-term "fzf" fzf/executable nil (split-string fzf/args " "))
-      (make-term "fzf" fzf/executable))
+    (make-term "fzf" "sh" nil "-c" (fzf/cmd cmd))
     (switch-to-buffer buf)
     (linum-mode 0)
     (set-window-margins nil 1)
@@ -105,18 +121,23 @@
 (defun fzf ()
   "Starts a fzf session."
   (interactive)
-  (if (fboundp #'projectile-project-root)
-      (fzf/start (condition-case err
-                     (projectile-project-root)
-                   (error
-                    default-directory)))
-    (fzf/start default-directory)))
+    (fzf/start (fzf/default-directory) nil))
 
 ;;;###autoload
 (defun fzf-directory (directory)
   "Starts a fzf session at the specified directory."
   (interactive "D")
-  (fzf/start directory))
+  (fzf/start directory nil))
+
+;;;###autoload
+(defun fzf-git-grep ()
+  "Starts a fzf session based on git grep result"
+  (interactive)
+  (fzf/start (fzf/default-directory)
+              (format "git grep -i --line-number %s -- './*' '!vendor/' '!node_modules/'"
+                      (if (region-active-p)
+                          (buffer-substring-no-properties (region-beginning) (region-end))
+                        (call-interactively (lambda (input) (interactive "sgit grep: ") input))))))
 
 (provide 'fzf)
 ;;; fzf.el ends here
