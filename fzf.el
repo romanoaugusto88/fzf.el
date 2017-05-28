@@ -74,7 +74,7 @@
   (format "stdout=$(%s%s %s %s); echo; echo $stdout"
           (if cmd (concat cmd " | ") "")
           fzf/executable
-          (format "--bind \"::execute(grep -Hn . {} | cut -f-2 -d: | %s %s)+abort\""
+          (format "--bind \"::execute(grep -Hno ^. {} | cut -f-2 -d: | %s %s)+abort\""
                    fzf/executable
                    fzf/args)
           fzf/args))
