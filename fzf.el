@@ -42,6 +42,7 @@
 ;; M-x fzf-hg
 ;; M-x fzf-projectile
 ;; M-x fzf-git-grep
+;; M-x fzf-rg
 ;;
 ;;; Code:
 
@@ -68,6 +69,11 @@
 
 (defcustom fzf/git-grep-args "-i --line-number %s"
   "Arguments to pass into git grep. %s is the search term placeholder"
+  :type 'string
+  :group 'fzf)
+
+(defcustom fzf/rg-args "-n -S %s"
+  "Arguments to pass into rg. %s is the search term placeholder"
   :type 'string
   :group 'fzf)
 
@@ -199,6 +205,14 @@
   (interactive)
   (fzf/start (locate-dominating-file default-directory ".git")
              (fzf/grep-cmd "git grep" fzf/git-grep-args)))
+
+;;;###autoload
+(defun fzf-rg ()
+  "Starts a fzf session based on rg result. The input comes
+   from the prompt or the selected region"
+  (interactive)
+  (fzf/start (locate-dominating-file default-directory ".git")
+             (fzf/grep-cmd "rg" fzf/rg-args)))
 
 (provide 'fzf)
 ;;; fzf.el ends here
